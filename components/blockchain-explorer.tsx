@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search } from "lucide-react"
+import { Search, Info } from "lucide-react"
 import { getBlockchainInfo } from "@/lib/blockchain-api"
 import Image from "next/image"
 
@@ -97,6 +97,13 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
 
       {/* Stats Cards */}
       <main className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex items-center gap-2 px-4 py-3 bg-primary/10 border border-primary/20 rounded-lg">
+          <Info className="h-4 w-4 text-primary flex-shrink-0" />
+          <p className="text-sm text-foreground">
+            <span className="font-medium">Note:</span> Only unshielded transactions are shown on this explorer.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Adding purple accent to total supply card */}
           <Card className="border-l-4 border-l-primary">
