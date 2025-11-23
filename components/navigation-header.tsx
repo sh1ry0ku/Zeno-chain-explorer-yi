@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { getPriceInfo } from "@/lib/blockchain-api"
+import Image from "next/image"
 
 type NavigationHeaderProps = {
   onSearch?: (query: string) => void
+  activeTab?: "blockchain" | "validators"
+  onTabChange?: (tab: "blockchain" | "validators") => void
 }
 
-export function NavigationHeader({ onSearch }: NavigationHeaderProps) {
+export function NavigationHeader({ onSearch, activeTab = "blockchain", onTabChange }: NavigationHeaderProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [network, setNetwork] = useState<"testnet" | "mainnet">("testnet")
   const [priceData, setPriceData] = useState({
@@ -28,7 +31,7 @@ export function NavigationHeader({ onSearch }: NavigationHeaderProps) {
     }
 
     fetchPriceData()
-    const interval = setInterval(fetchPriceData, 30000) // Update every 30 seconds
+    const interval = setInterval(fetchPriceData, 30000)
 
     return () => clearInterval(interval)
   }, [])
@@ -44,9 +47,7 @@ export function NavigationHeader({ onSearch }: NavigationHeaderProps) {
         <div className="flex items-center gap-4 h-16">
           {/* Logo/Brand */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <Image src="/images/zeno-purple.jpg" alt="Zeno" width={32} height={32} className="rounded-lg" />
             <div className="hidden sm:block">
               <h1 className="text-base font-bold text-foreground">Zeno Explorer</h1>
             </div>
@@ -107,6 +108,35 @@ export function NavigationHeader({ onSearch }: NavigationHeaderProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border bg-card">
+        <div className="container mx-auto px-4">
+          <div className="flex gap-6">
+            <button
+              onClick={() => onTabChange?.("blockchain")}
+              className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                activeTab === "blockchain" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Blockchain
+              {activeTab === "blockchain" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_8px_rgba(127,0,255,0.6)]" />
+              )}
+            </button>
+            <button
+              onClick={() => onTabChange?.("validators")}
+              className={`px-4 py-3 text-sm font-medium transition-colors relative ${
+                activeTab === "validators" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Validators
+              {activeTab === "validators" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_8px_rgba(127,0,255,0.6)]" />
+              )}
+            </button>
           </div>
         </div>
       </div>
