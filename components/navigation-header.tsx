@@ -38,7 +38,9 @@ export function NavigationHeader({ onSearch, activeTab = "blockchain", onTabChan
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    onSearch?.(searchQuery)
+    if (searchQuery.trim()) {
+      onSearch?.(searchQuery)
+    }
   }
 
   return (

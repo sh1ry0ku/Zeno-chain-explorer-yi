@@ -174,7 +174,96 @@ export async function getPriceInfo() {
 }
 
 export async function searchBlockchain(query: string) {
-  // TODO: Implement search functionality
+  if (!query || query.trim().length === 0) {
+    return null
+  }
+
+  const trimmedQuery = query.trim()
+
+  console.log("[v0] Searching for:", trimmedQuery)
+
+  // Try to search as transaction signature (base58 string)
+  if (trimmedQuery.length >= 80) {
+    try {
+      const tx = await rpcCall("getTransaction", [
+        trimmedQuery,
+        {
+          encoding: "json",
+          maxSupportedTransactionVersion: 0,
+        },
+      ])
+
+      if (tx) {
+        console.log("[v0] Found transaction:", tx)
+        return {
+          type: "transaction",
+          data: {
+            signature: trimmedQuery,
+            slot: tx.slot,
+            timestamp: tx.blockTime || Date.now() / 1000,
+            success: tx.meta?.err === null,
+            fee: tx.meta?.fee || 0,
+            instructions: tx.transaction?.message?.instructions?.length || 0,
+          },
+        }
+      }
+    } catch (error) {
+      console.log("[v0] Not a valid transaction")
+    }
+  }
+
+  // Try to search as block number
+  const blockNum = Number.parseInt(trimmedQuery)
+  if (!isNaN(blockNum) && blockNum >= 0) {
+    try {
+      const block = await rpcCall("getBlock", [
+        blockNum,
+        {
+          encoding: "json",
+          transactionDetails: "signatures",
+          rewards: false,
+        },
+      ])
+
+      if (block) {
+        console.log("[v0] Found block:", block)
+        return {
+          type: "block",
+          data: {
+            slot: blockNum,
+            hash: block.blockhash,
+            timestamp: block.blockTime || Date.now() / 1000,
+            transactions: block.transactions?.length || 0,
+            parentSlot: block.parentSlot,
+          },
+        }
+      }
+    } catch (error) {
+      console.log("[v0] Not a valid block number")
+    }
+  }
+
+  // Try to search as address (public key)
+  if (trimmedQuery.length >= 32 && trimmedQuery.length <= 44) {
+    try {
+      const balance = await rpcCall("getBalance", [trimmedQuery])
+
+      if (balance !== null) {
+        console.log("[v0] Found address:", trimmedQuery)
+        return {
+          type: "address",
+          data: {
+            address: trimmedQuery,
+            balance: balance / 1e9,
+          },
+        }
+      }
+    } catch (error) {
+      console.log("[v0] Not a valid address")
+    }
+  }
+
+  console.log("[v0] No results found for query:", trimmedQuery)
   return null
 }
 
@@ -184,7 +273,7 @@ export async function getValidatorInfo() {
 
     const [voteAccounts, perfSamples, epochInfo, supply] = await Promise.all([
       rpcCall("getVoteAccounts").catch(() => null),
-      rpcCall("getRecentPerformanceSamples", [10]).catch(() => null),
+      rpcCall("getRecentPerformanceSamples", [50]).catch(() => null),
       rpcCall("getEpochInfo").catch(() => null),
       rpcCall("getSupply").catch(() => null),
     ])
@@ -219,21 +308,37 @@ export async function getValidatorInfo() {
         ? perfSamples.reduce((sum: number, s: any) => sum + (s.samplePeriodSecs || 0), 0) / perfSamples.length
         : 0
 
+    const uptimeHistory =
+      perfSamples
+        ?.map((s: any, index: number) => {
+          const slotTime = 400 // milliseconds per slot
+          const timeAgo = Date.now() - index * s.samplePeriodSecs * 1000
+          const uptime = s.numSlots > 0 ? ((s.numSlots - (s.numNonVoteTransactions || 0)) / s.numSlots) * 100 : 100
+          return {
+            time: timeAgo,
+            uptime: Math.max(95, Math.min(100, uptime)), // Clamp between 95-100 for visualization
+          }
+        })
+        .reverse() || []
+
+    const recentUptime =
+      uptimeHistory.length > 0
+        ? uptimeHistory.reduce((sum, h) => sum + h.uptime, 0) / uptimeHistory.length
+        : totalValidators > 0
+          ? 100
+          : 0
+
     return {
       totalValidators,
       allActiveHealthy: activeValidators === totalValidators && totalValidators > 0,
       totalStaked: totalStaked / 1e9,
       percentOfSupply,
-      currentUptime: totalValidators > 0 ? 100 : 0,
-      sloMet: totalValidators > 0,
+      currentUptime: recentUptime,
+      sloMet: recentUptime >= 99.9,
       sloTarget: 99.9,
       incidents: voteAccounts.delinquent?.length || 0,
       avgResponse: avgSampleTime > 0 ? Math.round(avgSampleTime * 1000) : 0,
-      uptimeHistory:
-        perfSamples?.map((s: any) => ({
-          time: Date.now() - (s.slot || 0) * 400, // Approximate time
-          uptime: s.numTransactions > 0 ? 100 : 0,
-        })) || [],
+      uptimeHistory,
     }
   } catch (error) {
     console.log("[v0] Error fetching validator info:", error)

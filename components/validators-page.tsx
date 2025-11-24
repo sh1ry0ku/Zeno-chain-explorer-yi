@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getValidatorInfo } from "@/lib/blockchain-api"
 import { Activity, Database, TrendingUp, Clock } from "lucide-react"
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts"
 
 interface ValidatorInfo {
   totalValidators: number
@@ -151,8 +152,44 @@ export function ValidatorsPage({ activeTab, onTabChange }: ValidatorsPageProps) 
             </div>
 
             {/* Uptime Chart Placeholder */}
-            <div className="h-64 bg-card/50 rounded-lg border border-border flex items-center justify-center">
-              <p className="text-muted-foreground">Uptime chart will display when RPC is connected</p>
+            <div className="h-64 bg-card/50 rounded-lg border border-border p-4">
+              {validatorInfo.uptimeHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={validatorInfo.uptimeHistory}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="time"
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      tickFormatter={(value) => {
+                        const date = new Date(value)
+                        return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                      }}
+                    />
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      domain={[95, 100]}
+                      ticks={[95, 96, 97, 98, 99, 100]}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "6px",
+                      }}
+                      labelFormatter={(value) => new Date(value).toLocaleString()}
+                      formatter={(value: any) => [`${value.toFixed(2)}%`, "Uptime"]}
+                    />
+                    <Line type="monotone" dataKey="uptime" stroke="hsl(var(--success))" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-muted-foreground">Waiting for validator data...</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
