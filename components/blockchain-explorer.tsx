@@ -4,8 +4,8 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Search, Info } from "lucide-react"
-import { getBlockchainInfo } from "@/lib/blockchain-api"
+import { Search, Info, ExternalLink, CheckCircle2, XCircle } from "lucide-react"
+import { getBlockchainInfo, getLatestTransactions, getLatestBlocks } from "@/lib/blockchain-api"
 import Image from "next/image"
 
 type BlockchainInfo = {
@@ -15,6 +15,20 @@ type BlockchainInfo = {
   currentSlot: number
   blockHeight: number
   isHealthy: boolean
+}
+
+type Transaction = {
+  signature: string
+  slot: number
+  timestamp: number
+  success: boolean
+}
+
+type Block = {
+  slot: number
+  hash: string
+  timestamp: number
+  transactions: number
 }
 
 type BlockchainExplorerProps = {
@@ -33,19 +47,30 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
     isHealthy: false,
   })
   const [searchQuery, setSearchQuery] = useState("")
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [blocks, setBlocks] = useState<Block[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const info = await getBlockchainInfo()
+        const [info, txs, blks] = await Promise.all([
+          getBlockchainInfo(),
+          getLatestTransactions(20),
+          getLatestBlocks(20),
+        ])
+
         setBlockchainInfo(info)
+        setTransactions(txs)
+        setBlocks(blks)
+
+        console.log("[v0] Fetched data:", { info, txCount: txs.length, blockCount: blks.length })
       } catch (error) {
-        console.error("Failed to fetch blockchain info:", error)
+        console.error("Failed to fetch blockchain data:", error)
       }
     }
 
     fetchData()
-    const interval = setInterval(fetchData, 10000)
+    const interval = setInterval(fetchData, 5000)
     return () => clearInterval(interval)
   }, [])
 
@@ -58,9 +83,24 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
     handleSearch(searchQuery)
   }
 
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp * 1000)
+    const now = Date.now()
+    const diff = now - date.getTime()
+
+    if (diff < 60000) return "Just now"
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+    return date.toLocaleDateString()
+  }
+
+  const truncateHash = (hash: string) => {
+    if (hash.length <= 16) return hash
+    return `${hash.slice(0, 8)}...${hash.slice(-8)}`
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Adding purple gradient background to header */}
       <header className="border-b border-border bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between gap-6">
@@ -73,7 +113,6 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
                 className="rounded-xl"
               />
               <div>
-                {/* Making title text purple */}
                 <h1 className="text-2xl font-bold text-primary">Explore Zeno Chain</h1>
                 <p className="text-sm text-muted-foreground">Search transactions, blocks, wallets, and addresses</p>
               </div>
@@ -95,7 +134,6 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
         </div>
       </header>
 
-      {/* Stats Cards */}
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center gap-2 px-4 py-3 bg-primary/10 border border-primary/20 rounded-lg">
           <Info className="h-4 w-4 text-primary flex-shrink-0" />
@@ -105,7 +143,6 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {/* Adding purple accent to total supply card */}
           <Card className="border-l-4 border-l-primary">
             <CardContent className="p-6">
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Total Supply</h3>
@@ -114,7 +151,6 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
             </CardContent>
           </Card>
 
-          {/* Current Epoch */}
           <Card>
             <CardContent className="p-6">
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Current Epoch</h3>
@@ -123,7 +159,6 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
             </CardContent>
           </Card>
 
-          {/* Block Height */}
           <Card>
             <CardContent className="p-6">
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Block Height</h3>
@@ -132,7 +167,6 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
             </CardContent>
           </Card>
 
-          {/* Adding purple accent to status card */}
           <Card className="border-l-4 border-l-primary">
             <CardContent className="p-6">
               <h3 className="text-sm font-medium text-muted-foreground mb-2">Status</h3>
@@ -149,7 +183,6 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
           </Card>
         </div>
 
-        {/* Tabs */}
         <div className="border-b border-border mb-6">
           <div className="flex gap-1">
             <button
@@ -158,8 +191,7 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
                 transactionTab === "transactions" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Latest Transactions (0)
-              {/* Making active tab indicator purple with glow effect */}
+              Latest Transactions ({transactions.length})
               {transactionTab === "transactions" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_8px_rgba(127,0,255,0.6)]" />
               )}
@@ -170,7 +202,7 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
                 transactionTab === "blocks" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Blocks (0)
+              Blocks ({blocks.length})
               {transactionTab === "blocks" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_8px_rgba(127,0,255,0.6)]" />
               )}
@@ -178,18 +210,75 @@ export function BlockchainExplorer({ activeTab, onTabChange }: BlockchainExplore
           </div>
         </div>
 
-        {/* Tab Content */}
         <div className="min-h-[400px]">
           {transactionTab === "transactions" ? (
             <Card>
-              <CardContent className="p-12 text-center">
-                <p className="text-muted-foreground">No transactions yet</p>
+              <CardContent className="p-0">
+                {transactions.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <p className="text-muted-foreground">No transactions yet</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {transactions.map((tx, index) => (
+                      <div key={`${tx.signature}-${index}`} className="p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-mono text-sm font-medium text-foreground">
+                                {truncateHash(tx.signature)}
+                              </span>
+                              {tx.success ? (
+                                <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Slot {tx.slot} • {formatTime(tx.timestamp)}
+                            </p>
+                          </div>
+                          <button className="text-primary hover:text-primary/80 transition-colors">
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (
             <Card>
-              <CardContent className="p-12 text-center">
-                <p className="text-muted-foreground">No blocks yet</p>
+              <CardContent className="p-0">
+                {blocks.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <p className="text-muted-foreground">No blocks yet</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {blocks.map((block, index) => (
+                      <div key={`${block.slot}-${index}`} className="p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-foreground">Block #{block.slot}</span>
+                              <span className="font-mono text-sm text-muted-foreground">
+                                {truncateHash(block.hash)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {block.transactions} transactions • {formatTime(block.timestamp)}
+                            </p>
+                          </div>
+                          <button className="text-primary hover:text-primary/80 transition-colors">
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

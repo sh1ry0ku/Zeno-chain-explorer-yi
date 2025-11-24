@@ -8,7 +8,7 @@ import { Activity, Database, TrendingUp, Clock } from "lucide-react"
 interface ValidatorInfo {
   totalValidators: number
   allActiveHealthy: boolean
-  totalStaked: string
+  totalStaked: number
   percentOfSupply: number
   currentUptime: number
   sloMet: boolean
@@ -27,7 +27,7 @@ export function ValidatorsPage({ activeTab, onTabChange }: ValidatorsPageProps) 
   const [validatorInfo, setValidatorInfo] = useState<ValidatorInfo>({
     totalValidators: 0,
     allActiveHealthy: false,
-    totalStaked: "0.00",
+    totalStaked: 0,
     percentOfSupply: 0,
     currentUptime: 0,
     sloMet: false,
@@ -74,7 +74,7 @@ export function ValidatorsPage({ activeTab, onTabChange }: ValidatorsPageProps) 
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{validatorInfo.totalStaked} ZENO</div>
+              <div className="text-3xl font-bold">{validatorInfo.totalStaked.toFixed(6)} ZNO</div>
               <p className="text-sm text-muted-foreground mt-2">
                 {validatorInfo.percentOfSupply.toFixed(1)}% of supply
               </p>

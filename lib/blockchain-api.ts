@@ -182,19 +182,20 @@ export async function getValidatorInfo() {
   try {
     console.log("[v0] Fetching validator info...")
 
-    const [voteAccounts, perfSamples, epochInfo] = await Promise.all([
+    const [voteAccounts, perfSamples, epochInfo, supply] = await Promise.all([
       rpcCall("getVoteAccounts").catch(() => null),
       rpcCall("getRecentPerformanceSamples", [10]).catch(() => null),
       rpcCall("getEpochInfo").catch(() => null),
+      rpcCall("getSupply").catch(() => null),
     ])
 
-    console.log("[v0] Validator info:", { voteAccounts, perfSamples, epochInfo })
+    console.log("[v0] Validator info:", { voteAccounts, perfSamples, epochInfo, supply })
 
     if (!voteAccounts) {
       return {
         totalValidators: 0,
         allActiveHealthy: false,
-        totalStaked: "0.00",
+        totalStaked: 0,
         percentOfSupply: 0,
         currentUptime: 0,
         sloMet: false,
@@ -209,6 +210,9 @@ export async function getValidatorInfo() {
     const activeValidators = voteAccounts.current?.length || 0
     const totalStaked = voteAccounts.current?.reduce((sum: number, v: any) => sum + (v.activatedStake || 0), 0) || 0
 
+    const totalSupply = supply?.value?.total || 0
+    const percentOfSupply = totalSupply > 0 ? (totalStaked / totalSupply) * 100 : 0
+
     // Calculate average response time from performance samples
     const avgSampleTime =
       perfSamples?.length > 0
@@ -218,8 +222,8 @@ export async function getValidatorInfo() {
     return {
       totalValidators,
       allActiveHealthy: activeValidators === totalValidators && totalValidators > 0,
-      totalStaked: (totalStaked / 1e9).toFixed(6) + " ZENO",
-      percentOfSupply: 0, // Would need total supply to calculate
+      totalStaked: totalStaked / 1e9,
+      percentOfSupply,
       currentUptime: totalValidators > 0 ? 100 : 0,
       sloMet: totalValidators > 0,
       sloTarget: 99.9,
@@ -236,7 +240,7 @@ export async function getValidatorInfo() {
     return {
       totalValidators: 0,
       allActiveHealthy: false,
-      totalStaked: "0.00",
+      totalStaked: 0,
       percentOfSupply: 0,
       currentUptime: 0,
       sloMet: false,
