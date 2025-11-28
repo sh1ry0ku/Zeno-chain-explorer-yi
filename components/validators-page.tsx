@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getValidatorInfo } from "@/lib/blockchain-api"
 import { Activity, Database, TrendingUp, Clock } from "lucide-react"
-import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts"
+import { XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, AreaChart } from "recharts"
 
 interface ValidatorInfo {
   totalValidators: number
@@ -155,7 +155,13 @@ export function ValidatorsPage({ activeTab, onTabChange }: ValidatorsPageProps) 
             <div className="h-64 bg-card/50 rounded-lg border border-border p-4">
               {validatorInfo.uptimeHistory.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={validatorInfo.uptimeHistory}>
+                  <AreaChart data={validatorInfo.uptimeHistory}>
+                    <defs>
+                      <linearGradient id="uptimeGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="time"
@@ -182,8 +188,14 @@ export function ValidatorsPage({ activeTab, onTabChange }: ValidatorsPageProps) 
                       labelFormatter={(value) => new Date(value).toLocaleString()}
                       formatter={(value: any) => [`${value.toFixed(2)}%`, "Uptime"]}
                     />
-                    <Line type="monotone" dataKey="uptime" stroke="hsl(var(--success))" strokeWidth={2} dot={false} />
-                  </LineChart>
+                    <Area
+                      type="monotone"
+                      dataKey="uptime"
+                      stroke="hsl(var(--success))"
+                      strokeWidth={2}
+                      fill="url(#uptimeGradient)"
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full">
